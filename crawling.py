@@ -29,8 +29,8 @@ def selenium_task(key_word):
 
         if len(links) != 0:
             print(f"Tìm thấy {len(links)} link: ")
-            for link in links:
-                print(link)
+            for i, link in enumerate(links):
+                print(f"{i}.", link)
             return links
         else:
             print("Can't find anything")
@@ -39,24 +39,25 @@ def selenium_task(key_word):
         
 async def crawling_web(url):
     async with AsyncWebCrawler() as crawler:
-        result = await crawler.arun(url)
-        link = None
-        soup = BeautifulSoup(result.html, "html.parser")
-        for i in soup.find_all("a", href = True):
-            href = i["href"]
-            if "/doi/reader" in href.lower():
-                link = urljoin(url, href)
-                break
-        return link
+        list1 = []
+        for i in url:
+            result = await crawler.arun(i)
+            link = None
+            soup = BeautifulSoup(result.html, "html.parser")
+            for j in soup.find_all("a", href = True):
+                href = j["href"]
+                if "/doi/reader" in href.lower():
+                    link = urljoin(url, href)
+                    break
+            list1.append(link)
+        return list1
     
 if __name__ == "__main__":
-    key_word = input("Nhập vào từ khoá: ")
+    key_word = input("Entering your key word: ")
     link_list = selenium_task(key_word)
     if link_list:
-        links = []
-        for url in link_list:
-            links.append(asyncio.run(crawling_web(url)))
-        for i in links:
-            print(i)
+        links = asyncio.run(crawling_web(link_list))
+        for link in links:
+            print(link)
     else:
         print("No result.")
