@@ -22,17 +22,13 @@ def selenium_task(key_word, pages):
 
         links = []
         #links_element = driver.find_elements(By.XPATH, '//h3[@class="gs_rt"]/a')
-        
-        for i in range(pages + 1):
+        encoded_key = key_word.replace(" ", "+")
+        for i in range(0, pages, 1):
+            driver.get(f"https://scholar.google.com/scholar?start={10 * i}&q={encoded_key}&hl=vi&as_sdt=0,5")
+            time.sleep(2)
             links_element = driver.find_elements(By.XPATH, '//h3[@class="gs_rt"]/a')
             for j in links_element:
                 links.append(j.get_attribute("href"))
-            try:
-                next_button = driver.find_element(By.LINK_TEXT, "Next")
-                next_button.click()
-                time.sleep(2)
-            except:
-                break
 
         return links
     finally:
@@ -51,19 +47,22 @@ async def crawling_web(urls):
             soup = BeautifulSoup(result.html, "html.parser")
             for j in soup.find_all("a", href = True):
                 href = j["href"]
-                if "/doi/reader" in href.lower():
+                x = href.lower()
+                if (x.find("/doi/reader") != -1) or (x.find("/pdf") != -1) or (x.find(".pdf") != -1):  
                     link = urljoin(i, href)
                     break
-            list1.append(link)
+            if link:
+                list1.append(link)
         return list1
     
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
-    pages = int(input("Enterring number of pages you want to crawl: "))
+    pages = int(input("Entering number of pages that you want to crawl: "))
     link_list = selenium_task(key_word, pages)
     print(f"Found {len(link_list)} results.")
     if link_list:
         links = asyncio.run(crawling_web(link_list))
+        print("These are links required.")
         for link in links:
             print(link)
     else:
