@@ -21,7 +21,6 @@ def selenium_task(key_word, pages):
         time.sleep(3)
 
         links = []
-        #links_element = driver.find_elements(By.XPATH, '//h3[@class="gs_rt"]/a')
         encoded_key = key_word.replace(" ", "+")
         for i in range(0, pages, 1):
             driver.get(f"https://scholar.google.com/scholar?start={10 * i}&q={encoded_key}&hl=vi&as_sdt=0,5")
@@ -51,10 +50,17 @@ async def crawling_web(urls):
                 if (x.find("/doi/reader") != -1) or (x.find("/pdf") != -1) or (x.find(".pdf") != -1):  
                     link = urljoin(i, href)
                     break
-            if link:
+            if link != None:
                 list1.append(link)
         return list1
     
+# async def crawl_pdf(pdf_url):
+#     i = 1
+#     async with AsyncWebCrawler() as crawler:
+#         result = await crawler.arun(pdf_url)
+#         with open("save_path", "wb") as f:
+#             f.write(result.raw_body)
+
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
     pages = int(input("Entering number of pages that you want to crawl: "))
@@ -62,8 +68,9 @@ if __name__ == "__main__":
     print(f"Found {len(link_list)} results.")
     if link_list:
         links = asyncio.run(crawling_web(link_list))
-        print("These are links required.")
+        print("✅These are links required.")
         for link in links:
             print(link)
+        #asyncio.run(crawl_pdf(links[0]))
     else:
-        print("No result.")
+        print("❌No result.")
