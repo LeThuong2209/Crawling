@@ -9,9 +9,12 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from crawl4ai import AsyncWebCrawler
 import xlsxwriter
-from structure import structure_form
+import requests
+import os
+import random
+#from structure import structure_form
 
-def selenium_task(key_word, pages):
+def selenium_task(key_word):
     #crawl google page to collect all result links
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     try:
@@ -19,17 +22,31 @@ def selenium_task(key_word, pages):
         search_bar = driver.find_element(By.NAME, 'q')
         search_bar.send_keys(key_word)
         search_bar.send_keys(Keys.RETURN)
-
+        input("👉 Giải CAPTCHA (nếu có), rồi nhấn Enter...")
         time.sleep(3)
-
         links = []
-        encoded_key = key_word.replace(" ", "+")
-        for i in range(0, pages, 1):
-            driver.get(f"https://scholar.google.com/scholar?start={10 * i}&q={encoded_key}&hl=vi&as_sdt=0,5")
-            time.sleep(2)
-            links_element = driver.find_elements(By.XPATH, '//h3[@class="gs_rt"]/a')
-            for j in links_element:
-                links.append(j.get_attribute("href"))
+        page = 1
+        while True:
+            time.sleep(random.uniform(2, 5))
+            page = page + 1
+            url_links = driver.find_elements(By.XPATH, '//h3[@class="gs_rt"]/a')
+            
+            for link in url_links:
+                href = link.get_attribute("href")
+                if href:
+                    links.append(href)
+            #Find button
+            try:
+                button = driver.find_element(By.LINK_TEXT, "Next")
+            except:
+                try:
+                    button = driver.find_element(By.LINK_TEXT, "Tiếp")
+                except:
+                    break
+            button.click()
+
+            if page == 2:
+                break
 
         return links
     finally:
@@ -56,17 +73,23 @@ async def crawling_web(urls):
                 list1.append(link)
         return list1
     
-# async def crawl_pdf(pdf_url):
-#     i = 1
-#     async with AsyncWebCrawler() as crawler:
-#         result = await crawler.arun(pdf_url)
-#         with open("save_path", "wb") as f:
-#             f.write(result.raw_body)
+def download_pdf(pdf_urls):
+    out_put = './pdf_save'
+    for url in pdf_urls:
+        if (url.find("reader") != -1):
+            url = url.replace("reader", "pdf")
+
+        response = requests.get(url)
+
+        if (response.status_code == 200):
+            file_path = os.path.join(out_put, os.path.basename(url))
+            with open(file_path, "wb") as f:
+                f.write(response.content)
 
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
-    pages = int(input("Entering number of pages that you want to crawl: "))
-    link_list = selenium_task(key_word, pages)
+
+    link_list = selenium_task(key_word)
     print(f"Found {len(link_list)} results.")
     if link_list:
         links = asyncio.run(crawling_web(link_list))
@@ -74,5 +97,7 @@ if __name__ == "__main__":
         for link in links:
             print(link)
         #asyncio.run(crawl_pdf(links[0]))
+        #download files
+        download_pdf(links)
     else:
         print("❌No result.")
