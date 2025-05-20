@@ -8,6 +8,8 @@ import time
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from crawl4ai import AsyncWebCrawler
+import xlsxwriter
+from structure import structure_form
 
 def selenium_task(key_word, pages):
     #crawl google page to collect all result links
