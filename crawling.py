@@ -75,6 +75,9 @@ async def crawling_web(urls):
     
 def download_pdf(pdf_urls):
     out_put = './pdf_save'
+    os.makedirs(out_put, exist_ok=True)
+    print("Downloading...")
+    check = True
     for url in pdf_urls:
         if (url.find("reader") != -1):
             url = url.replace("reader", "pdf")
@@ -82,10 +85,15 @@ def download_pdf(pdf_urls):
         response = requests.get(url)
 
         if (response.status_code == 200):
+            check = False
             file_path = os.path.join(out_put, os.path.basename(url))
             with open(file_path, "wb") as f:
                 f.write(response.content)
-
+    if check == True:
+        print("Downloading failed")
+    else :
+        print("Completed !!!")
+        
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
 
