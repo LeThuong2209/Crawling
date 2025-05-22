@@ -22,7 +22,7 @@ def selenium_task(key_word):
         search_bar = driver.find_element(By.NAME, 'q')
         search_bar.send_keys(key_word)
         search_bar.send_keys(Keys.RETURN)
-        input("👉 Giải CAPTCHA (nếu có), rồi nhấn Enter...")
+        input("Solving Captcha, then push 'Enter'...")
         time.sleep(3)
         links = []
         page = 1
