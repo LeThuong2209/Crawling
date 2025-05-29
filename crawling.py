@@ -12,6 +12,8 @@ import xlsxwriter
 import requests
 import os
 import random
+import pypdf
+import re
 #from structure import structure_form
 
 def selenium_task(key_word):
@@ -93,7 +95,17 @@ def download_pdf(pdf_urls):
         print("Downloading failed")
     else :
         print("Completed !!!")
+
+def pdf_filter(pdf : str):
+    with open(pdf, 'rb') as pdf:
+        reader = pypdf.PdfReader(pdf, strict=False)
+        pdf_text = []
         
+        for page in reader.pages:
+            content = page.extract_text()
+            pdf_text.append(content)
+        return pdf_text  
+
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
 
@@ -107,5 +119,16 @@ if __name__ == "__main__":
         #asyncio.run(crawl_pdf(links[0]))
         #download files
         download_pdf(links)
+        
+        folder_path = "pdf_save"
+        for file in os.listdir(folder_path):
+            path = os.path.join(folder_path, file)
+            if os.path.isfile(path):
+                extracted_text = pdf_filter(path)
+                for text in extracted_text:
+                    emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
+                    if len(emails) != 0:
+                        print(emails)
+
     else:
         print("❌No result.")
