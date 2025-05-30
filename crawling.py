@@ -28,7 +28,7 @@ def selenium_task(key_word):
         input("Solving Captcha, then push 'Enter'...")
         time.sleep(3)
         links = []
-        page = 1
+        page = 0
         while True:
             time.sleep(random.uniform(2, 5))
             page = page + 1
@@ -101,14 +101,21 @@ def download_pdf(pdf_urls):
         print("Completed !!!")
 
 def pdf_filter(pdf : str):
-    with open(pdf, 'rb') as pdf:
-        reader = pypdf.PdfReader(pdf, strict=False)
-        pdf_text = []
-        
-        for page in reader.pages:
-            content = page.extract_text()
-            pdf_text.append(content)
-        return pdf_text  
+    try:
+        with open(pdf, 'rb') as pdf:
+            reader = pypdf.PdfReader(pdf, strict=False)
+            pdf_text = []
+            
+            for page in reader.pages:
+                content = page.extract_text()
+                pdf_text.append(content)
+            return pdf_text  
+    except pypdf.errors.PdfReadError as e:
+        print("ERROR:", {e})
+        return []
+    except Exception as e:
+        print("UNDEFINED ERROR.")
+        return []
 
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
