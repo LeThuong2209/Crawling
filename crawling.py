@@ -13,6 +13,7 @@ import requests
 import os
 import random
 import pypdf
+import shutil   
 import re
 #from structure import structure_form
 
@@ -129,6 +130,7 @@ if __name__ == "__main__":
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
                     if len(emails) != 0:
                         print(emails)
+        shutil.rmtree("pdf_save") # delete the folder and all its files
 
     else:
         print("❌No result.")
