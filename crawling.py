@@ -82,16 +82,19 @@ def download_pdf(pdf_urls):
     print("Downloading...")
     check = True
     for url in pdf_urls:
-        if (url.find("reader") != -1):
+        if 'reader' in url:
             url = url.replace("reader", "pdf")
+        try:    
+            response = requests.get(url, timeout = 20)
 
-        response = requests.get(url)
+            if (response.status_code == 200):
+                check = False
+                file_path = os.path.join(out_put, os.path.basename(url))
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+        except requests.exceptions.RequestException as e:
+            print("ERROR:", {e})
 
-        if (response.status_code == 200):
-            check = False
-            file_path = os.path.join(out_put, os.path.basename(url))
-            with open(file_path, "wb") as f:
-                f.write(response.content)
     if check == True:
         print("Downloading failed")
     else :
@@ -129,7 +132,8 @@ if __name__ == "__main__":
                 for text in extracted_text:
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
                     if len(emails) != 0:
-                        print(emails)
+                        for email in emails:
+                            print(email)
         shutil.rmtree("pdf_save") # delete the folder and all its files
 
     else:
