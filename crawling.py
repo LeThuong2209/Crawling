@@ -113,7 +113,7 @@ def pdf_filter(pdf : str):
     except pypdf.errors.PdfReadError as e:
         print('------')
         print("ERROR:", {e})
-        print('------')g
+        print('------')
         return []
     except Exception as e:
         print('------')
