@@ -111,10 +111,14 @@ def pdf_filter(pdf : str):
                 pdf_text.append(content)
             return pdf_text  
     except pypdf.errors.PdfReadError as e:
+        print('------')
         print("ERROR:", {e})
+        print('------')g
         return []
     except Exception as e:
+        print('------')
         print("UNDEFINED ERROR.")
+        print('------')
         return []
 
 if __name__ == "__main__":
