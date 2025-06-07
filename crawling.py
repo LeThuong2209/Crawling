@@ -17,6 +17,8 @@ import shutil
 import re
 #from structure import structure_form
 
+header_list = ["Search date", "Conf", "Country", "Year", "name", "surname", "email", "country", "affiliation"]
+
 def selenium_task(key_word):
     #crawl google page to collect all result links
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
@@ -48,7 +50,7 @@ def selenium_task(key_word):
                     break
             button.click()
 
-            if page == 2:
+            if page == 3:
                 break
 
         return links
@@ -81,7 +83,7 @@ def download_pdf(pdf_urls):
     os.makedirs(out_put, exist_ok=True)
     print("Downloading...")
     check = True
-    for url in pdf_urls:
+    for i, url in enumerate(pdf_urls):
         if 'reader' in url:
             url = url.replace("reader", "pdf")
         try:    
@@ -89,7 +91,7 @@ def download_pdf(pdf_urls):
 
             if (response.status_code == 200):
                 check = False
-                file_path = os.path.join(out_put, os.path.basename(url))
+                file_path = os.path.join(out_put, f"file {i}.pdf")
                 with open(file_path, "wb") as f:
                     f.write(response.content)
         except requests.exceptions.RequestException as e:
@@ -100,16 +102,75 @@ def download_pdf(pdf_urls):
     else :
         print("Completed !!!")
 
-def pdf_filter(pdf : str):
+def structuring(email : str, author : str, affiliation : str, key_word : str, country : str) :
+    parts = author.split()   
+    surname = parts[len(parts) - 1]
+    name = ' '.join(parts[0:(len(parts) - 1)])
+    year = key_word.split()[-1]
+    list1 = {
+        'Search date': '2025-06-08',
+        'Conf': key_word,
+        'Country': country,
+        'Year': year,
+        'name': name,
+        'surname': surname,
+        'email': email,
+        'country': '',
+        'affiliation': affiliation
+    }
+    return list1
+
+def pdf_filter(pdf : str, key_word : str, country : str):
     try:
         with open(pdf, 'rb') as pdf:
             reader = pypdf.PdfReader(pdf, strict=False)
-            pdf_text = []
-            
-            for page in reader.pages:
-                content = page.extract_text()
-                pdf_text.append(content)
-            return pdf_text  
+            text = reader.pages[0].extract_text()
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            emails = []
+            authors = []
+            affiliations = []
+            for line in lines:
+                # Bắt các email dạng {user1, user2}@domain.com
+                match = re.findall(r"\{([^}]+)\}@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", line)
+                if match:
+                    for user_group, domain in match:
+                        users = [u.strip() for u in user_group.split(',')]
+                        for user in users:
+                            emails.append(f"{user}@{domain}")
+                    continue
+
+                # Bắt các email thông thường
+                found_email = re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", line)
+                if found_email:
+                    emails.extend(found_email)
+                    continue
+                
+                #Bắt affiliation
+                if any(keyword in line.lower() for keyword in ["university", "institute", "school", "department", "faculty"]):
+                    part = line.split(',')
+                    clean_affiliation = [re.sub(r'^\d+\s*', '', p.strip()) for p in part if p.strip()]
+                    for aff in clean_affiliation:
+                        affiliations.append(aff)
+                    continue
+
+                #Bắt tên tác giả
+                if ',' in line and ', and ' in line:
+                    if '@' not in line and not any(k in line.lower() for k in ["university", "institute", "school", "department", "faculty"]):
+                        parts = line.replace(', and ', ',').split(',')
+                        clean_names = [re.sub(r'[\d†‡*#]+$', '', p.strip()) for p in parts if p.strip()]
+                        for name in clean_names:
+                            if len(name) != 0:
+                                authors.append(name)
+                        continue
+                if 'abstract' in line.lower():
+                    break
+            max_len = max(len(emails), len(authors), len(affiliations))
+            result = []
+            for i in range(max_len):
+                if i < len(emails) and i < len(authors) and i < len(affiliations):
+                    result.append(structuring(emails[i], authors[i], affiliations[i], key_word, country))
+            return result
+         
     except pypdf.errors.PdfReadError as e:
         print('------')
         print("ERROR:", {e})
@@ -117,13 +178,25 @@ def pdf_filter(pdf : str):
         return []
     except Exception as e:
         print('------')
-        print("UNDEFINED ERROR.")
+        print(f"ERROR: {e}")
         print('------')
         return []
 
+def excel_files(header_list : list, data : list):
+    result_file = xlsxwriter.Workbook("result.xlsx")
+    worksheet = result_file.add_worksheet("Sheet 1")
+    for index, header in enumerate(header_list):
+        worksheet.write(0, index, str(header))
+
+    for index, entry in enumerate(data):
+        for index2, content in enumerate (header_list):
+            worksheet.write(index + 1, index2, entry[content])
+
+    result_file.close()
+
 if __name__ == "__main__":
     key_word = input("Entering your key word: ")
-
+    country = input("Entering the country of the conf: ")
     link_list = selenium_task(key_word)
     print(f"Found {len(link_list)} results.")
     if link_list:
@@ -136,15 +209,14 @@ if __name__ == "__main__":
         download_pdf(links)
         
         folder_path = "pdf_save"
+        data = []
         for file in os.listdir(folder_path):
             path = os.path.join(folder_path, file)
             if os.path.isfile(path):
-                extracted_text = pdf_filter(path)
-                for text in extracted_text:
-                    emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
-                    if len(emails) != 0:
-                        for email in emails:
-                            print(email)
+                data.extend(pdf_filter(path, key_word, country))
+        
+        excel_files(header_list, data)
+
         shutil.rmtree("pdf_save") # delete the folder and all its files
 
     else:
