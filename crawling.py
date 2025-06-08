@@ -13,11 +13,13 @@ import requests
 import os
 import random
 import pypdf
+import pycountry
 import shutil   
 import re
 #from structure import structure_form
 
 header_list = ["Search date", "Conf", "Country", "Year", "name", "surname", "email", "country", "affiliation"]
+country_list = [country.name for country in pycountry.countries]
 
 def selenium_task(key_word):
     #crawl google page to collect all result links
@@ -50,7 +52,7 @@ def selenium_task(key_word):
                     break
             button.click()
 
-            if page == 3:
+            if page == 10:
                 break
 
         return links
@@ -90,10 +92,11 @@ def download_pdf(pdf_urls):
             response = requests.get(url, timeout = 20)
 
             if (response.status_code == 200):
-                check = False
-                file_path = os.path.join(out_put, f"file {i}.pdf")
-                with open(file_path, "wb") as f:
-                    f.write(response.content)
+                if response.headers.get("Content-Type", "").lower() == "application/pdf" or response.content[:4] == b"%PDF":
+                    check = False
+                    file_path = os.path.join(out_put, f"file {i}.pdf")
+                    with open(file_path, "wb") as f:
+                        f.write(response.content)
         except requests.exceptions.RequestException as e:
             print("ERROR:", {e})
 
@@ -102,7 +105,7 @@ def download_pdf(pdf_urls):
     else :
         print("Completed !!!")
 
-def structuring(email : str, author : str, affiliation : str, key_word : str, country : str) :
+def structuring(email : str, author : str, affiliation : str, key_word : str, country : str, country2 : str) :
     parts = author.split()   
     surname = parts[len(parts) - 1]
     name = ' '.join(parts[0:(len(parts) - 1)])
@@ -115,7 +118,7 @@ def structuring(email : str, author : str, affiliation : str, key_word : str, co
         'name': name,
         'surname': surname,
         'email': email,
-        'country': '',
+        'country': country2,
         'affiliation': affiliation
     }
     return list1
@@ -124,11 +127,13 @@ def pdf_filter(pdf : str, key_word : str, country : str):
     try:
         with open(pdf, 'rb') as pdf:
             reader = pypdf.PdfReader(pdf, strict=False)
-            text = reader.pages[0].extract_text()
+            text = reader.extract_text()
+
             lines = [line.strip() for line in text.split('\n') if line.strip()]
             emails = []
             authors = []
             affiliations = []
+            country2 = ''
             for line in lines:
                 # Bắt các email dạng {user1, user2}@domain.com
                 match = re.findall(r"\{([^}]+)\}@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", line)
@@ -151,6 +156,12 @@ def pdf_filter(pdf : str, key_word : str, country : str):
                     clean_affiliation = [re.sub(r'^\d+\s*', '', p.strip()) for p in part if p.strip()]
                     for aff in clean_affiliation:
                         affiliations.append(aff)
+
+                    for country_tmp in country_list:
+                        pattern = r"\b" + re.escape(country_tmp) + r"\b"
+                        if re.search(pattern, line):
+                            country2 = country_tmp
+                            break
                     continue
 
                 #Bắt tên tác giả
@@ -164,11 +175,13 @@ def pdf_filter(pdf : str, key_word : str, country : str):
                         continue
                 if 'abstract' in line.lower():
                     break
+                
             max_len = max(len(emails), len(authors), len(affiliations))
             result = []
             for i in range(max_len):
                 if i < len(emails) and i < len(authors) and i < len(affiliations):
-                    result.append(structuring(emails[i], authors[i], affiliations[i], key_word, country))
+                    if authors[i]:
+                        result.append(structuring(emails[i], authors[i], affiliations[i], key_word, country, country2))
             return result
          
     except pypdf.errors.PdfReadError as e:
@@ -217,7 +230,7 @@ if __name__ == "__main__":
         
         excel_files(header_list, data)
 
-        shutil.rmtree("pdf_save") # delete the folder and all its files
+        #shutil.rmtree("pdf_save") # delete the folder and all its files
 
     else:
         print("❌No result.")
